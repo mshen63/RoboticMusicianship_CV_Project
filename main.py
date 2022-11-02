@@ -12,17 +12,25 @@ from xarm.wrapper import XArmAPI
 from pythonosc import dispatcher
 from pythonosc import osc_server
 
-def onStart(robot):
-    qList[robot] = True
-    print(robot, qList[robot])
+def robotOne(playing, volume):
+    ARMONE[0] = playing
+    ARMONE[1] = volume
 
-def onStop(robot):
-    qList[robot] = False
-    print(robot, qList[robot])
+def robotTwo(playing, volume):
+    ARMTWO[0] = playing
+    ARMTWO[1] = volume
 
-def onVolume(robot, volume):
-    volumes[robot] = volume
-    print(robot, volumes[robot])
+def robotThree(playing, volume):
+    ARMTHREE[0] = playing
+    ARMTHREE[1] = volume
+
+def robotFour(playing, volume):
+    ARMFOUR[0] = playing
+    ARMFOUR[1] = volume
+
+def robotFive(playing, volume):
+    ARMFIVE[0] = playing
+    ARMFIVE[1] = volume
 
 def setup():
     for a in range(len(arms)):
@@ -97,15 +105,26 @@ def prepGesture(numarm, traj):
 
 def strummer(armNum):
     # melody here in the future
+    if armNum == 1:
+        armOn, armVolume = ARMONE
+    if armNum == 2:
+        armOn, armVolume = ARMTWO
+    if armNum == 3:
+        armOn, armVolume = ARMTHREE
+    if armNum == 4:
+        armOn, armVolume = ARMFOUR
+    if armNum == 5:
+        armOn, armVolume = ARMFIVE
+
     i = 0
     uptraj = fifth_poly(-strumD/2, strumD/2, speed)
     downtraj = fifth_poly(strumD/2, -strumD/2, speed)
     both = [uptraj, downtraj]
 
     while True:
-        if qList[armNum]:
+        if armOn:
             direction = i % 2
-            strumbot(armNum, both[direction])
+            strumbot(armNum-1, both[direction])
             i += 1
 
 
@@ -154,14 +173,14 @@ if __name__ == '__main__':
 
     NUM_ARMS = 5
     DEFAULT_VOLUME = 50
-    qList = [False] * NUM_ARMS
-    volumes = [DEFAULT_VOLUME] * NUM_ARMS
+    # qList = [False] * NUM_ARMS
+    # volumes = [DEFAULT_VOLUME] * NUM_ARMS
 
-    xArm0 = Thread(target=strummer, args=(0,))
-    xArm1 = Thread(target=strummer, args=(1,))
-    xArm2 = Thread(target=strummer, args=(2,))
-    xArm3 = Thread(target=strummer, args=(3,))
-    xArm4 = Thread(target=strummer, args=(4,))
+    xArm0 = Thread(target=strummer, args=(1,))
+    xArm1 = Thread(target=strummer, args=(2,))
+    xArm2 = Thread(target=strummer, args=(3,))
+    xArm3 = Thread(target=strummer, args=(4,))
+    xArm4 = Thread(target=strummer, args=(5,))
 
     xArm0.start()
     xArm1.start()
@@ -174,11 +193,23 @@ if __name__ == '__main__':
     # time.sleep(5)
     # q1.put(2)
     # input()
+    global ARMONE
+    ARMONE = [False, 50]
+    global ARMTWO
+    ARMTWO = [False, 50]
+    global ARMTHREE
+    ARMTHREE = [False, 50]
+    global ARMFOUR
+    ARMFOUR = [False, 50]
+    global ARMFIVE
+    ARMFIVE = [False, 50]
     
     dispatcher = dispatcher.Dispatcher()
-    dispatcher.map("/start", onStart)
-    dispatcher.map("/stop", onStop)
-    dispatcher.map("/volume", onVolume)
+    dispatcher.map("/1", robotOne)
+    dispatcher.map("/2", robotTwo)
+    dispatcher.map("/3", robotThree)
+    dispatcher.map("/4", robotFour)
+    dispatcher.map("/5", robotFive)
     def server():
         server = osc_server.ThreadingOSCUDPServer((IP, PORT_FROM_MAX), dispatcher)
         print("Serving on {}".format(server.server_address))

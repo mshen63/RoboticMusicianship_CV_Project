@@ -11,6 +11,27 @@
 # slow down volume change
 # big gesture
 
+
+# TODO
+from cgitb import handler
+from urllib import robotparser
+
+
+# faster and louder different features
+# one hand doing raise after selecting 
+# not play string, move robots with hand (on two robots)
+# drum robot
+# big gestures
+# sound goes to left and right (or arm) following arm
+# one hand controls sound one hand controls arms 
+# change speed on all of them not just one 
+# change pattern/rhythm not the speed
+# fingers 1, 2, 3
+# multi user
+# 
+
+
+
 from curses.ascii import isascii
 from enum import Enum
 import cv2
@@ -39,27 +60,49 @@ def drawGuidelines(image, thickness):
     image_rows, image_cols, _ = image.shape
     ON_THICKNESS = 10
     OFF_THICKNESS = 2
-    # from left to right
-    for i in range(5):
+    # from L -> R bottom row
+    for i in range(2):
         # middle
-        cv2.line(image, (image_cols//5*(5-i), image_rows//3*2), (image_cols//5*(5-i-1),
-                 image_rows//3*2), (0, 0, 0), ON_THICKNESS if thickness[i] else OFF_THICKNESS)
+        cv2.line(image, (image_cols//2*(2-i), image_rows//2), (image_cols//2*(2-i-1),
+                image_rows//2), (0, 0, 0), ON_THICKNESS if thickness[i] else OFF_THICKNESS)
         # left
-        cv2.line(image, (image_cols//5*(5-i), image_rows//3*2), (image_cols//5 *
-                 (5-i), 0), (0, 0, 0), ON_THICKNESS if thickness[i] else OFF_THICKNESS)
+        cv2.line(image, (image_cols//2*(2-i), image_rows//2), (image_cols//2 *
+                (2-i), image_rows), (0, 0, 0), ON_THICKNESS if thickness[i] else OFF_THICKNESS)
         # right
-        cv2.line(image, (image_cols//5*(5-i-1), image_rows//3*2), (image_cols//5 *
-                 (5-i-1), 0), (0, 0, 0), ON_THICKNESS if thickness[i] else OFF_THICKNESS)
+        cv2.line(image, (image_cols//2*(2-i-1), image_rows//2), (image_cols//2 *
+                (2-i-1), image_rows), (0, 0, 0), ON_THICKNESS if thickness[i] else OFF_THICKNESS)
+    # from left to right top row
+    for i in range(3):
+        # middle
+        cv2.line(image, (image_cols//3*(3-i), image_rows//2), (image_cols//3*(3-i-1),
+                image_rows//2), (0, 0, 0), ON_THICKNESS if thickness[i+2] else OFF_THICKNESS)
+        # left
+        cv2.line(image, (image_cols//3*(3-i), image_rows//2), (image_cols//3 *
+                (3-i), 0), (0, 0, 0), ON_THICKNESS if thickness[i+2] else OFF_THICKNESS)
+        # right
+        cv2.line(image, (image_cols//3*(3-i-1), image_rows//2), (image_cols//3 *
+                (3-i-1), 0), (0, 0, 0), ON_THICKNESS if thickness[i+2] else OFF_THICKNESS)
 
 def writeVolume(image, volumes, onBoxes):
   image_rows, image_cols, _ = image.shape
 
-  for i, vol in enumerate(volumes):
+  # top row
+  for i, vol in enumerate(volumes[:2]):
     if onBoxes[i]:
-      org = ((image_cols//5*i+(image_cols//5*(i+1)))//2, image_rows//3*2-20)
+      org = ((image_cols//2*i+(image_cols//2*(i+1)))//2, image_rows-20)
       font = cv2.FONT_HERSHEY_SIMPLEX
       fontScale = 1
-      color = (0, 0, 0)
+      color = (256, 0, 0)
+      thickness = 2
+      image = cv2.putText(image, str(vol), org, font, 
+                      fontScale, color, thickness, cv2.LINE_AA)
+  # top row
+  for i, vol in enumerate(volumes[2:]):
+    if onBoxes[i+2]:
+      org = ((image_cols//3*i+(image_cols//3*(i+1)))//2, image_rows//2-20)
+      font = cv2.FONT_HERSHEY_SIMPLEX
+      fontScale = 1
+      color = (256, 0, 0)
       thickness = 2
       image = cv2.putText(image, str(vol), org, font, 
                       fontScale, color, thickness, cv2.LINE_AA)
@@ -70,12 +113,18 @@ def findPointerSection(image, hand_landmarks):
     handPos = tuple([int(pointerX*image_cols), int(pointerY*image_rows)])
     cv2.circle(image, handPos, radius=10, color=(0, 0, 0), thickness=10)
 
-    if pointerY > (2/3):
-        # neutral bottom section
-        return 5
+    if pointerY > (1/2):
+        # robot 0 or 1
+        if pointerX > 1/2:
+            section = 0
+        else:
+            section = 1
+
     else:
-        section = int(abs(pointerX//(1/5)-4))
-        return section
+        # robot 2, 3, or 4
+        section = int(abs(pointerX//(1/3)-2))+2
+    
+    return section
 
 def findPalmCenterSection(image, hand_landmarks):
     palmSumX = 0
@@ -196,12 +245,12 @@ with mp_hands.Hands(
                       if onBoxes[section] and section < 5:
                         volumes[section] = min(100, volumes[section] + 1)
                         print((section, volumes[section]))
-                        client.send_message("/volume", (section, volumes[section]))
+                        client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
                     case Move.VOLUME_DOWN:
                       if onBoxes[section] and section < 5:
                         volumes[section] = max(0, volumes[section] - 1)
                         print((section, volumes[section]))
-                        client.send_message("/volume", (section, volumes[section]))
+                        client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
 
                 # is same as last movement (not registered)
                 elif lastMovement.isSameMove(section, move):
@@ -213,34 +262,35 @@ with mp_hands.Hands(
                         match move:
                           case Move.POINT:
                             print("start "+str(section))
-                            if section < 5:
-                                client.send_message("/start", section)
                             onBoxes[section] = True
+                            if section < 5:
+                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
                           case Move.STOP:
                             print("stop "+str(section))
-                            if section < 5:
-                                client.send_message("/stop", section)
                             onBoxes[section] = False
+                            if section < 5:
+                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
+                            
                           case Move.VOLUME_UP:
                             if onBoxes[section] and section < 5:
                                 volumes[section] += 1
                                 print((section, volumes[section]))
-                                client.send_message("/volume", (section, volumes[section]))
+                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
                           case Move.VOLUME_DOWN:
                             if onBoxes[section] and section < 5:
                                 volumes[section] -= 1
                                 print((section, volumes[section]))
-                                client.send_message("/volume", (section, volumes[section]))
+                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
                           case Move.VOLUME_UP_INTERVAL:
                             if onBoxes[section] and section < 5:
                                 volumes[section] = min(100, volumes[section] + VOLUME_INTERVAL_CHANGE)
                                 print((section, volumes[section]))
-                                client.send_message("/volume", (section, volumes[section]))
+                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
                           case Move.VOLUME_DOWN_INTERVAL:
                             if onBoxes[section] and section < 5:
                                 volumes[section] = max(0, volumes[section] - VOLUME_INTERVAL_CHANGE)
                                 print((section, volumes[section]))
-                                client.send_message("/volume", (section, volumes[section]))
+                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
 
                 # is completely new movement
                 else:
