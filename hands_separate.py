@@ -181,7 +181,7 @@ with mp_hands.Hands(
 
     MOVEMENT_CHANGE_MARGIN = 4
     VOLUME_CHANGE_SPEED = 10
-    DEFAULT_VOLUME = 0
+    DEFAULT_VOLUME = 50
     VOLUME_INTERVAL_CHANGE = 10
     # which sections are on
     onBoxes = [False]*6
@@ -250,8 +250,8 @@ with mp_hands.Hands(
 
             # print((section, move))
             if section != -1:
-                print(I)
-                I+=1
+                # print(I)
+                # I+=1
                 # is same registered movement
                 if lastRegisteredMovement.isSameMove(section, move):
                   match move:
@@ -274,13 +274,27 @@ with mp_hands.Hands(
                         if finishedMovement:
                             
                             if onBoxes[section] and section < 5:
-                                print("finished movement")
+                                print("finished up")
                                 volumes[section] = min(100, volumes[section] + VOLUME_INTERVAL_CHANGE)
                                 # print((section, volumes[section]))
                                 client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
                             lastRegisteredMovement.times = 0
                         
                         if movePos[1] <= lastRegisteredMovement.Y:
+                            lastRegisteredMovement.times += 1
+                    case Move.PALM_DOWN:
+
+                        # if hand reached top of screen, is falling and registered enough rising moves before this
+                        finishedMovement = movePos[1] < lastRegisteredMovement.Y and movePos[1] > 0.8 and lastRegisteredMovement.times >= MOVEMENT_CHANGE_MARGIN
+                        if finishedMovement:
+                            
+                            if onBoxes[section] and section < 5:
+                                print("finished down")
+                                volumes[section] = max(0, volumes[section] - VOLUME_INTERVAL_CHANGE)
+                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
+                            lastRegisteredMovement.times = 0
+                        
+                        if movePos[1] >= lastRegisteredMovement.Y:
                             lastRegisteredMovement.times += 1
 
                   lastRegisteredMovement.X = movePos[0]
@@ -289,16 +303,19 @@ with mp_hands.Hands(
 
                 # is same as last movement (but not registered)
                 elif lastMovement.isSameMove(section, move):
-                    if move == Move.PALM_UP:
-                        # print(lastMovement.times)
-                        if movePos[1] <= lastMovement.Y:
-                            # print("increment up one")
+                    match move:
+                        case Move.PALM_UP:
+                            if movePos[1] <= lastMovement.Y:
+                                lastMovement.times += 1
+                            else:
+                                lastMovement.times = 0
+                        case Move.PALM_DOWN:
+                            if movePos[1] >= lastMovement.Y:
+                                lastMovement.times += 1
+                            else:
+                                lastMovement.times = 0
+                        case _:
                             lastMovement.times += 1
-                        else:
-                            # print("up go back to 0")
-                            lastMovement.times = 0
-                    else:
-                        lastMovement.times += 1
 
                     lastMovement.X = movePos[0]
                     lastMovement.Y = movePos[1]
@@ -348,13 +365,19 @@ with mp_hands.Hands(
                 # is completely new movement
                 else:
                     # avoiding non-registered right hand moment (whichd defaults to point) from breaking up sequence
-                        
+                    # palmDownFromUp = move == Move.PALM_DOWN and lastRegisteredMovement.move == Move.PALM_UP
+                    # palmUpFromDown = move == Move.PALM_UP and lastRegisteredMovement.move == Move.PALM_DOWN
+                    # if palmDownFromUp:
+                    #     pass
+                    # if palmUpFromDown:
+                    #     pass
                     lastMovement.section = section
                     lastMovement.move = move
                     lastMovement.times = 1
                     if movePos:
                         lastMovement.X = movePos[0]
                         lastMovement.Y = movePos[1]
+                    
 
         flipped = cv2.flip(image, 1)
         writeVolume(flipped, volumes, onBoxes)
