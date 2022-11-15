@@ -332,6 +332,7 @@ with mp_hands.Hands(
                                 # print("start "+str(section))
                                 onBoxes[section] = True
                                 if section < 5:
+                                    print("sending message to " + str(section))
                                     client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
                           case Move.STOP:
                             if onBoxes[section]:
