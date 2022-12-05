@@ -14,89 +14,71 @@ from pythonosc import dispatcher
 from pythonosc import osc_server
 
 
-class robotThread(threading.Thread):
-    def __init__(self, target, args):
-        threading.Thread.__init__(self, group=None, target, args)
-        self.flag = threading.Event()
-        self.running = threading.Event()
-        self.target = target
-
-    def run(self):
-        while self.running.isSet():
-            self.flag.wait()
-            if self._target:
-                print("run the target")
-                self.target(*self._args)
-
-        # while True:
-        #     with self.pause_cond:
-        #         while self.paused:
-        #             self.pause_cond.wait(timeout=None)
-        #         while not self.paused:
-        #             if self._target:
-        #                 self._target(*self._args, **self._kwargs)
-
-    def pause(self):
-        self.flag.clear()
-
-    def resume(self):
-        self.flag.set()
-
 
 def robotOne(name, playing, volume):
-    print("robot 1")
     ARMONE[1] = volume
-    if ARMONE[0] != playing:
-        ARMONE[0] = playing
-
-        if playing:
-            xArm0.resume()
-        else:
-            xArm0.pause()
+    if playing == ARMONE[0]:
+        return
+    
+    ARMONE[0] = playing
+    
+    if playing:
+        event_0.set()
+    else:
+        event_0.clear()
+    
 
 def robotTwo(name, playing, volume):
     ARMTWO[1] = volume
-    if ARMTWO[0] != playing:
-        ARMTWO[0] = playing
-
-        if playing:
-            xArm1.resume()
-        else:
-            xArm1.pause()
+    if playing == ARMTWO[0]:
+        return
+    
+    ARMTWO[0] = playing
+    
+    if playing:
+        event_1.set()
+    else:
+        event_1.clear()
 
 
 def robotThree(name, playing, volume):
     ARMTHREE[1] = volume
-    if ARMTHREE[0] != playing:
-        ARMTHREE[0] = playing
-
-        if playing:
-            xArm2.resume()
-        else:
-            xArm2.pause()
+    if playing == ARMTHREE[0]:
+        return
+    
+    ARMTHREE[0] = playing
+    
+    if playing:
+        event_2.set()
+    else:
+        event_2.clear()
 
 
 def robotFour(name, playing, volume):
     ARMFOUR[1] = volume
-    if ARMFOUR[0] != playing:
-        ARMFOUR[0] = playing
-
-        if playing:
-            xArm3.resume()
-        else:
-            xArm3.pause()
+    if playing == ARMFOUR[0]:
+        return
+    
+    ARMFOUR[0] = playing
+    
+    if playing:
+        event_3.set()
+    else:
+        event_3.clear()
 
 
 
 def robotFive(name, playing, volume):
     ARMFIVE[1] = volume
-    if ARMFIVE[0] != playing:
-        ARMFIVE[0] = playing
-
-        if playing:
-            xArm4.resume()
-        else:
-            xArm4.pause()
+    if playing == ARMFIVE[0]:
+        return
+    
+    ARMFIVE[0] = playing
+    
+    if playing:
+        event_4.set()
+    else:
+        event_4.clear()
 
 
 
@@ -182,19 +164,8 @@ def prepGesture(numarm, traj):
         initial_time += 0.004
 
 
-def strummer(armNum):
+def strummer(armNum, event):
     # melody here in the future
-    if armNum == 1:
-        arm = ARMONE
-    if armNum == 2:
-        arm = ARMTWO
-    if armNum == 3:
-        arm = ARMTHREE
-    if armNum == 4:
-        arm = ARMFOUR
-    if armNum == 5:
-        arm = ARMFIVE
-    armOn, _ = arm
     i = 0
     armAPI = arms[armNum - 1]
     pos = IP[armNum - 1]
@@ -205,16 +176,30 @@ def strummer(armNum):
     MAX_SPEED = 4
     MAX_ACC = 20
 
+    if armNum == 1:
+        arm = ARMONE
+    if armNum == 2:
+        arm = ARMTWO
+    if armNum == 3:
+        arm = ARMTHREE
+    if armNum == 4:
+        arm = ARMFOUR
+    if armNum == 5:
+        arm = ARMFIVE
 
-    armOn, armVolume = arm
+    while True:
+        while not event.isSet():
+            event_is_set = event.wait()
 
-    if armOn:
-        direction = i % 2
-        strumbot(armAPI, both[direction], pos)
-        print("strum on" + str(armNum))
-        print(armVolume / 100)
-        # time.sleep((armVolume/20))
-        i += 1
+        armOn, armVolume = arm
+
+        if armOn:
+            direction = i % 2
+            strumbot(armAPI, both[direction], pos)
+            print("strum on" + str(armNum))
+            print(armVolume / 100)
+            # time.sleep((armVolume/20))
+            i += 1
 
 
 # Press the green button in the gutter to run the script.
@@ -271,17 +256,17 @@ if __name__ == '__main__':
     global ARMFIVE
     ARMFIVE = [False, DEFAULT_VOLUME]
 
-    pause_cond0 = threading.Condition(threading.Lock())
-    pause_cond1 = threading.Condition(threading.Lock())
-    pause_cond2 = threading.Condition(threading.Lock())
-    pause_cond3 = threading.Condition(threading.Lock())
-    pause_cond4 = threading.Condition(threading.Lock())
+    event_0 = threading.Event()
+    event_1 = threading.Event()
+    event_2 = threading.Event()
+    event_3 = threading.Event()
+    event_4 = threading.Event()
 
-    xArm0 = robotThread(target=strummer, args=(1, pause_cond0,))
-    xArm1 = robotThread(target=strummer, args=(2, pause_cond1,))
-    xArm2 = robotThread(target=strummer, args=(3, pause_cond2,))
-    xArm3 = robotThread(target=strummer, args=(4, pause_cond3,))
-    xArm4 = robotThread(target=strummer, args=(5, pause_cond4,))
+    xArm0 = Thread(target=strummer, args=(1, event_0,))
+    xArm1 = Thread(target=strummer, args=(2, event_1,))
+    xArm2 = Thread(target=strummer, args=(3, event_2,))
+    xArm3 = Thread(target=strummer, args=(4, event_3,))
+    xArm4 = Thread(target=strummer, args=(5, event_4,))
 
     xArm0.start()
     xArm1.start()

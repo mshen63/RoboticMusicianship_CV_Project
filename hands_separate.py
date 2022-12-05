@@ -1,20 +1,3 @@
-# speed vector
-# appregio melody thing
-
-# this IP 
-# top right: (0,0)
-# bottom left: (1, 1)
-
-# state machine states:
-
-# two hands/gesture recognition
-# playing after socket done
-
-# TODO:
-# slow down volume change
-# big gesture
-
-
 # TODO
 from cgitb import handler
 from urllib import robotparser
@@ -31,8 +14,11 @@ from urllib import robotparser
 # change pattern/rhythm not the speed
 # fingers 1, 2, 3
 # multi user
-# 
 
+
+# TODO:
+# universal speed, 5 combos of rhythmns for # arms on 
+# make it more sensitive 
 
 
 from curses.ascii import isascii
@@ -95,7 +81,7 @@ def writeVolume(image, volumes, onBoxes):
       org = ((image_cols//2*i+(image_cols//2*(i+1)))//2, image_rows-20)
       font = cv2.FONT_HERSHEY_SIMPLEX
       fontScale = 1
-      color = (256, 0, 0)
+      color = (255, 255, 255)
       thickness = 2
       image = cv2.putText(image, str(vol), org, font, 
                       fontScale, color, thickness, cv2.LINE_AA)
@@ -105,7 +91,7 @@ def writeVolume(image, volumes, onBoxes):
       org = ((image_cols//3*i+(image_cols//3*(i+1)))//2, image_rows//2-20)
       font = cv2.FONT_HERSHEY_SIMPLEX
       fontScale = 1
-      color = (256, 0, 0)
+      color = (255, 255, 255)
       thickness = 2
       image = cv2.putText(image, str(vol), org, font, 
                       fontScale, color, thickness, cv2.LINE_AA)
