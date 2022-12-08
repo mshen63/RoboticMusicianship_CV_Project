@@ -191,14 +191,12 @@ def strummer(armNum, event):
         while not event.isSet():
             event_is_set = event.wait()
 
-        armOn, armVolume = arm
+        armOn, waitTime = arm
 
         if armOn:
             direction = i % 2
             strumbot(armAPI, both[direction], pos)
-            print("strum on" + str(armNum))
-            print(armVolume / 100)
-            time.sleep(1-(armVolume/100))
+            time.sleep(waitTime)
             i += 1
 
 

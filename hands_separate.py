@@ -1,6 +1,7 @@
 # TODO
 from cgitb import handler
 from urllib import robotparser
+import time
 
 # TODO:
 # universal speed, 5 combos of rhythmns for # arms on 
@@ -36,35 +37,60 @@ with mp_hands.Hands(
     VOLUME_CHANGE_SPEED = 10
     DEFAULT_VOLUME = 50
     NUM_ARMS = 6
-    VOLUME_INTERVAL_CHANGE = 10
-    # flag for volume being controlled together or separately
-    VOLUME_ALL_TOGETHER = True
+    SPEED_INTERVAL_CHANGE = 10
+    # flag for speed being controlled together or separately
+    PLAY_ALL_TOGETHER = True
     NUM_TOTAL_JOINTS_EACH_HAND = 21
     # 75% of screen between two detections
     REQUIRED_SPEED_GESTURE_RECOGNITION = .75
     # which sections are on
     onBoxes = [False]*6
-    # volume of each section
-    volumes = [DEFAULT_VOLUME]*5
-
+    # speed of each section
+    speeds = [DEFAULT_VOLUME]*5
     lastRegisteredMovement = Movement()
     lastMovement = Movement()
 
-    def sendCommand(section, volumeChange):
-        global volumes
+    def handleSpeedCommand(section, speedChange):
+        global speeds
         global onBoxes
-        volume = min(100, volumes[section]+volumeChange)
-        volume = max(0, volume)
-        if not VOLUME_ALL_TOGETHER:
-            volumes[section] = volume
+        speed = min(100, speeds[section] + speedChange)
+        speed = max(0, speed)
+        if not PLAY_ALL_TOGETHER:
+            speeds[section] = speed
+            time_between_strums = 1-(speeds[section]/100)
+            num_arms_playing = sum(onBoxes)
+            time_to_wait = time_between_strums * num_arms_playing
             if section < 5:
-                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
+                client.send_message("/" + str(section), (onBoxes[section], time_to_wait))
         else:
-            volumes = [volume] * NUM_ARMS
+            speeds = [speed] * NUM_ARMS
             for i, boxOn in enumerate(onBoxes):
                 if i<5 and boxOn:
-                    client.send_message("/" + str(i), (boxOn, volumes[i]))
+                    time_between_strums = 1-(speeds[i]/100)
+                    num_arms_playing = sum(onBoxes)
+                    time_to_wait = time_between_strums * num_arms_playing
+                    client.send_message("/" + str(i), (boxOn, time_to_wait))
 
+    def handleStartStopCommands(section, isStop):
+        global speeds
+        global onBoxes
+
+
+        # turn all on boxes off
+        for i, boxOn in enumerate(onBoxes):
+            if i < 5 and boxOn:
+                client.send_message("/" + str(i), (False, -1))
+
+        for i, boxOn in enumerate(onBoxes):
+            if i < 5 and boxOn:
+                # dependent on speed
+                time_between_strums = 1-(speeds[i]/100)
+                num_arms_playing = sum(onBoxes)
+                time_to_wait = time_between_strums * num_arms_playing
+                # wait time between starts 
+                time.sleep(time_between_strums)
+                client.send_message("/" + str(i), (onBoxes[i], time_to_wait))
+    
         
 
     while cap.isOpened():
@@ -126,11 +152,11 @@ with mp_hands.Hands(
                         case Move.VOLUME_UP:
                             lastRegisteredMovement.times += 1
                             if onBoxes[section] and section < 5:
-                                sendCommand(section, 1)
+                                handleSpeedCommand(section, 1)
                         case Move.VOLUME_DOWN:
                             lastRegisteredMovement.times += 1
                             if onBoxes[section] and section < 5:
-                                sendCommand(section, -1)
+                                handleSpeedCommand(section, -1)
 
                     lastRegisteredMovement.X = movePos[0]
                     lastRegisteredMovement.Y = movePos[1]
@@ -163,32 +189,28 @@ with mp_hands.Hands(
                             case Move.POINT:  
                                 if not onBoxes[section]:
                                     onBoxes[section] = True
-                                    if section < 5:
-                                        print("sending message to " + str(section))
-                                        client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
-                            
+                                    handleStartStopCommands(section, isStop=False)
                             case Move.STOP:
                                 if onBoxes[section]:
                                     onBoxes[section] = False
-                                    if section < 5:
-                                        client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
+                                    handleStartStopCommands(section, isStop=True)
 
                             case Move.PALM_UP:
-                                sendCommand(section, VOLUME_INTERVAL_CHANGE)
+                                handleSpeedCommand(section, SPEED_INTERVAL_CHANGE)
                                 lastMovement.movementDone = True
                                     
                             case Move.PALM_DOWN:
 
-                                sendCommand(section, -VOLUME_INTERVAL_CHANGE)
+                                handleSpeedCommand(section, -SPEED_INTERVAL_CHANGE)
                                 lastMovement.movementDone = True
 
                             case Move.VOLUME_UP_INTERVAL:
                                 if onBoxes[section] and section < 5:
-                                    sendCommand(section, VOLUME_INTERVAL_CHANGE)
+                                    handleSpeedCommand(section, SPEED_INTERVAL_CHANGE)
 
                             case Move.VOLUME_DOWN_INTERVAL:
                                 if onBoxes[section] and section < 5:
-                                    sendCommand(section, -VOLUME_INTERVAL_CHANGE)
+                                    handleSpeedCommand(section, -SPEED_INTERVAL_CHANGE)
 
                         lastMovement.movementDone = True
 
@@ -204,7 +226,7 @@ with mp_hands.Hands(
                     
 
         flipped = cv2.flip(image, 1)
-        writeVolume(flipped, volumes, onBoxes)
+        writeVolume(flipped, speeds, onBoxes)
 
         cv2.imshow('MediaPipe Hands', flipped)
         if cv2.waitKey(5) & 0xFF == 27:
