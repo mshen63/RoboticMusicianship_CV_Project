@@ -2,39 +2,21 @@
 from cgitb import handler
 from urllib import robotparser
 
-
-# faster and louder different features
-# one hand doing raise after selecting 
-# not play string, move robots with hand (on two robots)
-# drum robot
-# big gestures
-# sound goes to left and right (or arm) following arm
-# one hand controls sound one hand controls arms 
-# change speed on all of them not just one 
-# change pattern/rhythm not the speed
-# fingers 1, 2, 3
-# multi user
-
-
 # TODO:
 # universal speed, 5 combos of rhythmns for # arms on 
 # make it more sensitive 
 
-
-from curses.ascii import isascii
-from enum import Enum
 import cv2
 import mediapipe as mp
-import time
 from pythonosc import udp_client
-from handGestureRecognition import detectGesture
+from handGestureRecognition import *
 from movements import Move, Movement
+from screenDisplayHelpers import *
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
-cap = cv2.VideoCapture(0)
-I = 1
+cap = cv2.VideoCapture(1)
 PORT_TO_MAX = 5002
 # should point to IP from MAX's ethernet port
 # put ur own IP to something different but on same network (ie: "192.168.2.3")
@@ -45,130 +27,21 @@ global client
 client = udp_client.SimpleUDPClient(IP, PORT_TO_MAX)
 
 
-def drawGuidelines(image, thickness):
-    image_rows, image_cols, _ = image.shape
-    ON_THICKNESS = 10
-    OFF_THICKNESS = 2
-    # from L -> R bottom row
-    for i in range(2):
-        # middle
-        cv2.line(image, (image_cols//2*(2-i), image_rows//2), (image_cols//2*(2-i-1),
-                image_rows//2), (0, 0, 0), ON_THICKNESS if thickness[i] else OFF_THICKNESS)
-        # left
-        cv2.line(image, (image_cols//2*(2-i), image_rows//2), (image_cols//2 *
-                (2-i), image_rows), (0, 0, 0), ON_THICKNESS if thickness[i] else OFF_THICKNESS)
-        # right
-        cv2.line(image, (image_cols//2*(2-i-1), image_rows//2), (image_cols//2 *
-                (2-i-1), image_rows), (0, 0, 0), ON_THICKNESS if thickness[i] else OFF_THICKNESS)
-    # from left to right top row
-    for i in range(3):
-        # middle
-        cv2.line(image, (image_cols//3*(3-i), image_rows//2), (image_cols//3*(3-i-1),
-                image_rows//2), (0, 0, 0), ON_THICKNESS if thickness[i+2] else OFF_THICKNESS)
-        # left
-        cv2.line(image, (image_cols//3*(3-i), image_rows//2), (image_cols//3 *
-                (3-i), 0), (0, 0, 0), ON_THICKNESS if thickness[i+2] else OFF_THICKNESS)
-        # right
-        cv2.line(image, (image_cols//3*(3-i-1), image_rows//2), (image_cols//3 *
-                (3-i-1), 0), (0, 0, 0), ON_THICKNESS if thickness[i+2] else OFF_THICKNESS)
-
-def writeVolume(image, volumes, onBoxes):
-  image_rows, image_cols, _ = image.shape
-
-  # top row
-  for i, vol in enumerate(volumes[:2]):
-    if onBoxes[i]:
-      org = ((image_cols//2*i+(image_cols//2*(i+1)))//2, image_rows-20)
-      font = cv2.FONT_HERSHEY_SIMPLEX
-      fontScale = 1
-      color = (255, 255, 255)
-      thickness = 2
-      image = cv2.putText(image, str(vol), org, font, 
-                      fontScale, color, thickness, cv2.LINE_AA)
-  # top row
-  for i, vol in enumerate(volumes[2:]):
-    if onBoxes[i+2]:
-      org = ((image_cols//3*i+(image_cols//3*(i+1)))//2, image_rows//2-20)
-      font = cv2.FONT_HERSHEY_SIMPLEX
-      fontScale = 1
-      color = (255, 255, 255)
-      thickness = 2
-      image = cv2.putText(image, str(vol), org, font, 
-                      fontScale, color, thickness, cv2.LINE_AA)
-
-def findPointerSection(image, hand_landmarks):
-    pointerX = hand_landmarks.landmark[8].x
-    pointerY = hand_landmarks.landmark[8].y
-    handPos = tuple([int(pointerX*image_cols), int(pointerY*image_rows)])
-    cv2.circle(image, handPos, radius=10, color=(0, 0, 0), thickness=10)
-
-    if pointerY > (1/2):
-        # robot 0 or 1
-        if pointerX > 1/2:
-            section = 0
-        else:
-            section = 1
-
-    else:
-        # robot 2, 3, or 4
-        section = int(abs(pointerX//(1/3)-2))+2
-    
-    return section
-
-def findPalmCenterSection(image, hand_landmarks):
-    palmSumX = 0
-    palmSumY = 0
-    palmConnections = (0, 1, 5, 9, 13, 17)
-    for i in palmConnections:
-        palmSumX += hand_landmarks.landmark[i].x
-        palmSumY += hand_landmarks.landmark[i].y
-    palmAvgX = palmSumX/6
-    palmAvgY = palmSumY/6
-    handPos = tuple([int(palmAvgX*image_cols), int(palmAvgY*image_rows)])
-    cv2.circle(image, handPos, radius=5, color=(0, 0, 0), thickness=10)
-    if palmAvgY > (2/3):
-        # neutral bottom section
-        return 5
-    else:
-        section = int(abs(palmAvgX//(1/5)-4))
-        return section
-
-def detectStopGesture(hand_landmarks):
-
-    thumbDown = hand_landmarks.landmark[4].x >= hand_landmarks.landmark[5].x
-    if thumbDown:
-        return False
-
-    secondFinger = [8, 7, 6, 5]
-    thirdFinger = [12, 11, 10, 9]
-    fourthFinger = [16, 15, 14, 13]
-    pinkie = [20, 19, 18, 17]
-
-    fingerJoints = [
-        secondFinger,
-        thirdFinger,
-        fourthFinger,
-        pinkie
-    ]
-
-    for finger in fingerJoints:
-        for i in range(len(finger)-1):
-            jointNum = finger[i]
-            nextJointNum = finger[i+1]
-            if hand_landmarks.landmark[jointNum].y >= hand_landmarks.landmark[nextJointNum].y:
-                return False
-    return True
-
-
 with mp_hands.Hands(
         model_complexity=0,
         min_detection_confidence=0.5,
         min_tracking_confidence=0.5) as hands:
 
-    MOVEMENT_CHANGE_MARGIN = 4
+    MOVEMENT_CHANGE_MARGIN = 2
     VOLUME_CHANGE_SPEED = 10
     DEFAULT_VOLUME = 50
+    NUM_ARMS = 6
     VOLUME_INTERVAL_CHANGE = 10
+    # flag for volume being controlled together or separately
+    VOLUME_ALL_TOGETHER = True
+    NUM_TOTAL_JOINTS_EACH_HAND = 21
+    # 75% of screen between two detections
+    REQUIRED_SPEED_GESTURE_RECOGNITION = .75
     # which sections are on
     onBoxes = [False]*6
     # volume of each section
@@ -177,6 +50,23 @@ with mp_hands.Hands(
     lastRegisteredMovement = Movement()
     lastMovement = Movement()
 
+    def sendCommand(section, volumeChange):
+        global volumes
+        global onBoxes
+        volume = min(100, volumes[section]+volumeChange)
+        volume = max(0, volume)
+        if not VOLUME_ALL_TOGETHER:
+            volumes[section] = volume
+            if section < 5:
+                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
+        else:
+            volumes = [volume] * NUM_ARMS
+            for i, boxOn in enumerate(onBoxes):
+                if i<5 and boxOn:
+                    client.send_message("/" + str(i), (boxOn, volumes[i]))
+
+        
+
     while cap.isOpened():
         success, image = cap.read()
         if not success:
@@ -184,8 +74,6 @@ with mp_hands.Hands(
             # If loading a video, use 'break' instead of 'continue'.
             continue
 
-        # To improve performance, optionally mark the image as not writeable to
-        # pass by reference.
         image.flags.writeable = False
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         drawGuidelines(image, onBoxes)
@@ -208,11 +96,9 @@ with mp_hands.Hands(
                     mp_hands.HAND_CONNECTIONS,
                     mp_drawing_styles.get_default_hand_landmarks_style(),
                     mp_drawing_styles.get_default_hand_connections_style())
-                # draw hands
-                # NOTE: Right is actually left hand
 
+                # NOTE: "Right" is actually left hand because camera is flipped
                 if results.multi_handedness[i].classification[0].label == "Right":
-                    # print("RIGHT")
                     newMove = detectGesture(hand_landmarks)
                     if newMove:
                       move = newMove
@@ -221,85 +107,52 @@ with mp_hands.Hands(
                     for lm in hand_landmarks.landmark:
                         moveX += lm.x
                         moveY += lm.y
-                    movePos = (moveX / 21, moveY / 21)
-                    # print(move)
+                    movePos = (moveX / NUM_TOTAL_JOINTS_EACH_HAND, moveY / NUM_TOTAL_JOINTS_EACH_HAND)
 
 
                 # "Left" hand (right hand) does the pointing
                 else:
-                    # print("LEFT")
                     # section = findPalmCenterSection(image, hand_landmarks)
                     section = findPointerSection(image, hand_landmarks)
 
                 # draw guideboxes
                 drawGuidelines(image, onBoxes)
 
-            # print((section, move))
             if section != -1:
-                # print(I)
-                # I+=1
-                # is same registered movement
-                if lastRegisteredMovement.isSameMove(section, move):
-                  match move:
-                    case Move.VOLUME_UP:
-                      lastRegisteredMovement.times += 1
-                      if onBoxes[section] and section < 5:
-                        volumes[section] = min(100, volumes[section] + 1)
-                        # print((section, volumes[section]))
-                        client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
-                    case Move.VOLUME_DOWN:
-                      lastRegisteredMovement.times += 1
-                      if onBoxes[section] and section < 5:
-                        volumes[section] = max(0, volumes[section] - 1)
-                        # print((section, volumes[section]))
-                        client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
-                    case Move.PALM_UP:
 
-                        # if hand reached top of screen, is falling and registered enough rising moves before this
-                        finishedMovement = movePos[1] > lastRegisteredMovement.Y and movePos[1] < 0.3 and lastRegisteredMovement.times >= MOVEMENT_CHANGE_MARGIN
-                        if finishedMovement:
-                            
-                            if onBoxes[section] and section < 5:
-                                print("finished up")
-                                volumes[section] = min(100, volumes[section] + VOLUME_INTERVAL_CHANGE)
-                                # print((section, volumes[section]))
-                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
-                            lastRegisteredMovement.times = 0
-                        
-                        if movePos[1] <= lastRegisteredMovement.Y:
+                # is same registered movement and movement not done yet (or is continuous)
+                if lastRegisteredMovement.isSameMove(section, move) and not lastRegisteredMovement.movementDone:
+                    match move:
+                        case Move.VOLUME_UP:
                             lastRegisteredMovement.times += 1
-                    case Move.PALM_DOWN:
-
-                        # if hand reached top of screen, is falling and registered enough rising moves before this
-                        finishedMovement = movePos[1] < lastRegisteredMovement.Y and movePos[1] > 0.8 and lastRegisteredMovement.times >= MOVEMENT_CHANGE_MARGIN
-                        if finishedMovement:
-                            
                             if onBoxes[section] and section < 5:
-                                print("finished down")
-                                volumes[section] = max(0, volumes[section] - VOLUME_INTERVAL_CHANGE)
-                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
-                            lastRegisteredMovement.times = 0
-                        
-                        if movePos[1] >= lastRegisteredMovement.Y:
+                                sendCommand(section, 1)
+                        case Move.VOLUME_DOWN:
                             lastRegisteredMovement.times += 1
+                            if onBoxes[section] and section < 5:
+                                sendCommand(section, -1)
 
-                  lastRegisteredMovement.X = movePos[0]
-                  lastRegisteredMovement.Y = movePos[1]
+                    lastRegisteredMovement.X = movePos[0]
+                    lastRegisteredMovement.Y = movePos[1]
 
 
                 # is same as last movement (but not registered)
                 elif lastMovement.isSameMove(section, move):
+                    # keep checking gestures until registered as done 
                     match move:
                         case Move.PALM_UP:
-                            if movePos[1] <= lastMovement.Y:
+                            print("UP" + str(lastMovement.times))
+                            print(movePos)
+                            changeX, changeY = lastMovement.calculatePositionChange(movePos)
+                            if changeY > 0:
                                 lastMovement.times += 1
-                            else:
-                                lastMovement.times = 0
+                            
                         case Move.PALM_DOWN:
-                            if movePos[1] >= lastMovement.Y:
+                            print("DOWN" + str(lastMovement.times))
+                            print(movePos)
+                            changeX, changeY = lastMovement.calculatePositionChange(movePos)
+                            if changeY < 0:
                                 lastMovement.times += 1
-                            else:
-                                lastMovement.times = 0
                         case _:
                             lastMovement.times += 1
 
@@ -313,51 +166,41 @@ with mp_hands.Hands(
                         lastRegisteredMovement.X = lastMovement.X
                         lastRegisteredMovement.Y = lastMovement.Y
                         match move:
-                          case Move.POINT:  
-                            if not onBoxes[section]:
-                                # print("start "+str(section))
-                                onBoxes[section] = True
-                                if section < 5:
-                                    print("sending message to " + str(section))
-                                    client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
-                          case Move.STOP:
-                            if onBoxes[section]:
-                                # print("stop "+str(section))
-                                onBoxes[section] = False
-                                if section < 5:
-                                    client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
+                            case Move.POINT:  
+                                if not onBoxes[section]:
+                                    onBoxes[section] = True
+                                    if section < 5:
+                                        print("sending message to " + str(section))
+                                        client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
                             
-                          case Move.VOLUME_UP:
-                            if onBoxes[section] and section < 5:
-                                volumes[section] += 1
-                                # print((section, volumes[section]))
-                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
-                          case Move.VOLUME_DOWN:
-                            if onBoxes[section] and section < 5:
-                                volumes[section] -= 1
-                                # print((section, volumes[section]))
-                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
-                          case Move.VOLUME_UP_INTERVAL:
-                            if onBoxes[section] and section < 5:
-                                volumes[section] = min(100, volumes[section] + VOLUME_INTERVAL_CHANGE)
-                                # print((section, volumes[section]))
-                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
-                          case Move.VOLUME_DOWN_INTERVAL:
-                            if onBoxes[section] and section < 5:
-                                volumes[section] = max(0, volumes[section] - VOLUME_INTERVAL_CHANGE)
-                                # print((section, volumes[section]))
-                                client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
+                            case Move.STOP:
+                                if onBoxes[section]:
+                                    onBoxes[section] = False
+                                    if section < 5:
+                                        client.send_message("/" + str(section), (onBoxes[section], volumes[section]))
 
+                            case Move.PALM_UP:
+                                sendCommand(section, VOLUME_INTERVAL_CHANGE)
+                                lastMovement.movementDone = True
+                                    
+                            case Move.PALM_DOWN:
+
+                                sendCommand(section, -VOLUME_INTERVAL_CHANGE)
+                                lastMovement.movementDone = True
+
+                            case Move.VOLUME_UP_INTERVAL:
+                                if onBoxes[section] and section < 5:
+                                    sendCommand(section, VOLUME_INTERVAL_CHANGE)
+
+                            case Move.VOLUME_DOWN_INTERVAL:
+                                if onBoxes[section] and section < 5:
+                                    sendCommand(section, -VOLUME_INTERVAL_CHANGE)
+
+                        lastMovement.movementDone = True
 
                 # is completely new movement
                 else:
-                    # avoiding non-registered right hand moment (whichd defaults to point) from breaking up sequence
-                    # palmDownFromUp = move == Move.PALM_DOWN and lastRegisteredMovement.move == Move.PALM_UP
-                    # palmUpFromDown = move == Move.PALM_UP and lastRegisteredMovement.move == Move.PALM_DOWN
-                    # if palmDownFromUp:
-                    #     pass
-                    # if palmUpFromDown:
-                    #     pass
+
                     lastMovement.section = section
                     lastMovement.move = move
                     lastMovement.times = 1

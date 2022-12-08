@@ -15,8 +15,14 @@ class Movement:
     self.section = section
     self.move = move
     self.times = times
+    self.movementDone = False
     self.X = x
     self.Y = y
   
   def isSameMove(self, section, move):
     return self.section == section and self.move == move
+  
+  # moving down -> -
+  # moving up -> +
+  def calculatePositionChange(self, newPosition):
+    return self.X - newPosition[0], self.Y - newPosition[1]
