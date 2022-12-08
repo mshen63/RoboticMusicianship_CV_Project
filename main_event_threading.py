@@ -19,22 +19,22 @@ def robotOne(name, playing, volume):
     ARMONE[1] = volume
     if playing == ARMONE[0]:
         return
-    
+
     ARMONE[0] = playing
-    
+
     if playing:
         event_0.set()
     else:
         event_0.clear()
-    
+
 
 def robotTwo(name, playing, volume):
     ARMTWO[1] = volume
     if playing == ARMTWO[0]:
         return
-    
+
     ARMTWO[0] = playing
-    
+
     if playing:
         event_1.set()
     else:
@@ -45,9 +45,9 @@ def robotThree(name, playing, volume):
     ARMTHREE[1] = volume
     if playing == ARMTHREE[0]:
         return
-    
+
     ARMTHREE[0] = playing
-    
+
     if playing:
         event_2.set()
     else:
@@ -58,9 +58,9 @@ def robotFour(name, playing, volume):
     ARMFOUR[1] = volume
     if playing == ARMFOUR[0]:
         return
-    
+
     ARMFOUR[0] = playing
-    
+
     if playing:
         event_3.set()
     else:
@@ -72,9 +72,9 @@ def robotFive(name, playing, volume):
     ARMFIVE[1] = volume
     if playing == ARMFIVE[0]:
         return
-    
+
     ARMFIVE[0] = playing
-    
+
     if playing:
         event_4.set()
     else:
@@ -198,7 +198,7 @@ def strummer(armNum, event):
             strumbot(armAPI, both[direction], pos)
             print("strum on" + str(armNum))
             print(armVolume / 100)
-            # time.sleep((armVolume/20))
+            time.sleep(1-(armVolume/100))
             i += 1
 
 
@@ -313,5 +313,3 @@ if __name__ == '__main__':
         strumnum = input("keep going")
     #
     #     qList[0].put(0)
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/

@@ -16,7 +16,7 @@ from screenDisplayHelpers import *
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 PORT_TO_MAX = 5002
 # should point to IP from MAX's ethernet port
 # put ur own IP to something different but on same network (ie: "192.168.2.3")
@@ -139,20 +139,14 @@ with mp_hands.Hands(
                 # is same as last movement (but not registered)
                 elif lastMovement.isSameMove(section, move):
                     # keep checking gestures until registered as done 
+                    
                     match move:
-                        case Move.PALM_UP:
-                            print("UP" + str(lastMovement.times))
-                            print(movePos)
+                        case [Move.PALM_UP, Move.PALM_DOWN]:
+
                             changeX, changeY = lastMovement.calculatePositionChange(movePos)
-                            if changeY > 0:
+                            if abs(changeY) > 0.1:
                                 lastMovement.times += 1
-                            
-                        case Move.PALM_DOWN:
-                            print("DOWN" + str(lastMovement.times))
-                            print(movePos)
-                            changeX, changeY = lastMovement.calculatePositionChange(movePos)
-                            if changeY < 0:
-                                lastMovement.times += 1
+
                         case _:
                             lastMovement.times += 1
 

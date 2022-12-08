@@ -32,7 +32,7 @@ def detectFlatHand(hand_landmarks):
     fourthFifthAvg = fourthFifth / 8
     
 
-    isFlatHand = (palmYHigh - palmYLow) < 0.15
+    isFlatHand = (palmYHigh - palmYLow) < 0.10
     palmUp = thumbSecondAvg > fourthFifthAvg
     return isFlatHand, palmUp
 
