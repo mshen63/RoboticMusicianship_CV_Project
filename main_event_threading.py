@@ -13,10 +13,10 @@ from xarm.wrapper import XArmAPI
 from pythonosc import dispatcher
 from pythonosc import osc_server
 
+# TODO: clean up repetitive handler code. Figure out better way around common resource sharing with array or queue that -> slow speeds 
 
-
-def robotOne(name, playing, volume):
-    ARMONE[1] = volume
+def robotOne(name, playing, speed):
+    ARMONE[1] = speed
     if playing == ARMONE[0]:
         return
 
@@ -28,8 +28,8 @@ def robotOne(name, playing, volume):
         event_0.clear()
 
 
-def robotTwo(name, playing, volume):
-    ARMTWO[1] = volume
+def robotTwo(name, playing, speed):
+    ARMTWO[1] = speed
     if playing == ARMTWO[0]:
         return
 
@@ -41,8 +41,8 @@ def robotTwo(name, playing, volume):
         event_1.clear()
 
 
-def robotThree(name, playing, volume):
-    ARMTHREE[1] = volume
+def robotThree(name, playing, speed):
+    ARMTHREE[1] = speed
     if playing == ARMTHREE[0]:
         return
 
@@ -54,8 +54,8 @@ def robotThree(name, playing, volume):
         event_2.clear()
 
 
-def robotFour(name, playing, volume):
-    ARMFOUR[1] = volume
+def robotFour(name, playing, speed):
+    ARMFOUR[1] = speed
     if playing == ARMFOUR[0]:
         return
 
@@ -68,8 +68,8 @@ def robotFour(name, playing, volume):
 
 
 
-def robotFive(name, playing, volume):
-    ARMFIVE[1] = volume
+def robotFive(name, playing, speed):
+    ARMFIVE[1] = speed
     if playing == ARMFIVE[0]:
         return
 
@@ -165,16 +165,13 @@ def prepGesture(numarm, traj):
 
 
 def strummer(armNum, event):
-    # melody here in the future
+
     i = 0
     armAPI = arms[armNum - 1]
     pos = IP[armNum - 1]
-    print("in strummer!" + str(armNum))
     uptraj = fifth_poly(-strumD / 2, strumD / 2, speed)
     downtraj = fifth_poly(strumD / 2, -strumD / 2, speed)
     both = [uptraj, downtraj]
-    MAX_SPEED = 4
-    MAX_ACC = 20
 
     if armNum == 1:
         arm = ARMONE
@@ -215,12 +212,13 @@ if __name__ == '__main__':
     speed = 0.25
     # source of message to max's port #
 
+    # TODO: update these to most recent positions for the strings
     IP0 = [-1, 87.1, -2, 126.5, -strumD / 2, 51.7, -45]
     IP1 = [2.1, 86.3, 0, 127.1, -strumD / 2, 50.1, -45]
     IP2 = [1.5, 81.6, 0.0, 120, -strumD / 2, 54.2, -45]
     IP3 = [2.5, 81, 0, 117.7, -strumD / 2, 50.5, -45]
     IP4 = [-1.6, 81.8, 0, 120, -strumD / 2, 50.65, -45]
-    # [-3.9, 65, 3.5, 100.3, -strumD / 2, 42.7, 101.1]  # [-1.6, 81.8, 0, 120, -strumD/2, 50.13, -45]
+    # TODO: add drums
     DRUM1 = [0.0, 23.1, 0.0, 51.4, 0.0, -60.8, 0.0]  # DRUMMMING
     notes = np.array([64, 60, 69, 55, 62])
 
@@ -231,29 +229,30 @@ if __name__ == '__main__':
     arm3 = XArmAPI('192.168.1.203')
     arm4 = XArmAPI('192.168.1.237')
     arms = [arm0, arm1, arm2, arm3, arm4]
-    # arms = [arm1]
+
     totalArms = len(arms)
     setup()
     input("lets go")
     setup2()
-    # input("letsgo again")
+
     for a in arms:
         a.set_mode(1)
         a.set_state(0)
 
     NUM_ARMS = 5
-    DEFAULT_VOLUME = 50
+    DEFAULT_SPEED = 50
     global ARMONE
-    ARMONE = [False, DEFAULT_VOLUME]
+    ARMONE = [False, DEFAULT_SPEED]
     global ARMTWO
-    ARMTWO = [False, DEFAULT_VOLUME]
+    ARMTWO = [False, DEFAULT_SPEED]
     global ARMTHREE
-    ARMTHREE = [False, DEFAULT_VOLUME]
+    ARMTHREE = [False, DEFAULT_SPEED]
     global ARMFOUR
-    ARMFOUR = [False, DEFAULT_VOLUME]
+    ARMFOUR = [False, DEFAULT_SPEED]
     global ARMFIVE
-    ARMFIVE = [False, DEFAULT_VOLUME]
+    ARMFIVE = [False, DEFAULT_SPEED]
 
+    # events used to control start and stop strummer function for each arm
     event_0 = threading.Event()
     event_1 = threading.Event()
     event_2 = threading.Event()
@@ -272,27 +271,17 @@ if __name__ == '__main__':
     xArm3.start()
     xArm4.start()
 
-    # tension = fifth_poly(0, -10, 0.5)
-    # print(tension)
-    # input("TEST")
-    # time.sleep(5)
-    # q1.put(2)
-    # input()
-
     PORT_FROM_MAX = 5002
     IP_MAX = "0.0.0.0"
 
-    # qList = [False] * NUM_ARMS
-    # volumes = [DEFAULT_VOLUME] * NUM_ARMS
     dispatcher = dispatcher.Dispatcher()
+    # each arm has their own dispatch handler function (see top)
     dispatcher.map("/0", robotOne)
     dispatcher.map("/1", robotTwo)
     dispatcher.map("/2", robotThree)
     dispatcher.map("/3", robotFour)
     dispatcher.map("/4", robotFive)
-    #
-    # dispatcher.map("/stop", onStop)
-    # dispatcher.map("/volume", onVolume)
+
     dispatcher.set_default_handler(default_handler)
 
     input("Here!")
@@ -309,5 +298,3 @@ if __name__ == '__main__':
 
     while True:
         strumnum = input("keep going")
-    #
-    #     qList[0].put(0)

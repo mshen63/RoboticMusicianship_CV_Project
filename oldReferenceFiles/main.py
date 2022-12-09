@@ -1,3 +1,4 @@
+# NOTE: first iteration of server. Please refer to main_event_threading.py for recent iteration
 import os
 import sys
 import time

@@ -1,3 +1,4 @@
+# NOTE: mini function for testing your UDP connection w the computer running the server and MAX
 from pythonosc import udp_client
 
 PORT_TO_MAX = 5002

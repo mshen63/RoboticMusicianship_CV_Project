@@ -1,3 +1,4 @@
+# NOTE: first iteration of client please refer to hands_separate.py for most recent iteration
 # this IP 
 # top right: (0,0)
 # bottom left: (1, 1)

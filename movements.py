@@ -2,10 +2,10 @@ from enum import Enum
 class Move(Enum):
   POINT = "Point"
   STOP = "Stop"
-  VOLUME_UP = "Volume Up"
-  VOLUME_DOWN = "Volume Down"
-  VOLUME_UP_INTERVAL = "Volume Up Interval"
-  VOLUME_DOWN_INTERVAL = "Volume Down Interval"
+  SPEED_UP = "Speed Up"
+  SPEED_DOWN = "Speed Down"
+  SPEED_UP_INTERVAL = "Speed Up Interval"
+  SPEED_DOWN_INTERVAL = "Speed Down Interval"
   PALM_UP = "Palm Up"
   PALM_DOWN = "Palm Down"
 

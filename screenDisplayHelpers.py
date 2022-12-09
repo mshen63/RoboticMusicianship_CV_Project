@@ -27,11 +27,11 @@ def drawGuidelines(image, thickness):
         cv2.line(image, (image_cols//3*(3-i-1), image_rows//2), (image_cols//3 *
                 (3-i-1), 0), (0, 0, 0), ON_THICKNESS if thickness[i+2] else OFF_THICKNESS)
 
-def writeVolume(image, volumes, onBoxes):
+def writeSpeed(image, speeds, onBoxes):
   image_rows, image_cols, _ = image.shape
 
   # top row
-  for i, vol in enumerate(volumes[:2]):
+  for i, vol in enumerate(speeds[:2]):
     if onBoxes[i]:
       org = ((image_cols//2*i+(image_cols//2*(i+1)))//2, image_rows-20)
       font = cv2.FONT_HERSHEY_SIMPLEX
@@ -41,7 +41,7 @@ def writeVolume(image, volumes, onBoxes):
       image = cv2.putText(image, str(vol), org, font, 
                       fontScale, color, thickness, cv2.LINE_AA)
   # top row
-  for i, vol in enumerate(volumes[2:]):
+  for i, vol in enumerate(speeds[2:]):
     if onBoxes[i+2]:
       org = ((image_cols//3*i+(image_cols//3*(i+1)))//2, image_rows//2-20)
       font = cv2.FONT_HERSHEY_SIMPLEX
