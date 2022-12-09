@@ -1,8 +1,8 @@
 # RoboticMusicianship_CV_Project
 
-Makes use of mediapipe. Using webcam input, recognizes which section corresponding to a robot is pointed at to start/stop play. 
+Makes use of mediapipe. Using webcam input, recognizes which section corresponding to an arm is pointed at to start/stop play and change speeds.
 
-Note: must be run on local device with webcam access. 
+Note: must be run on local device with webcam access or an attached webcam. 
 
 ## Installation
 
@@ -19,7 +19,12 @@ pip install mediapipe
 
 ## Usage
 
-In terminal, run:
+In terminal of computer connected to arms, run:
 ```python
-python hands.py
+python main_event_threading.py
+```
+
+In terminal of client computer with webcam, run:
+```python
+python hands_separate.py
 ```
